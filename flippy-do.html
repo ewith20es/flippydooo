@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flippy Do</title>
+<style>
+  :root{
+    --bg:#e9edf4;
+    --grid:rgba(120,140,170,.10);
+    --ink:#182231;
+    --muted:#69748a;
+    --paper:#ffffff;
+    --paper2:#eef1f7;
+    --edge:#cfd7e4;
+    --crease:#b9c4d4;
+    --on1:#3d7bff;
+    --on2:#2a56d6;
+    --onedge:#1f45b0;
+    --panel:#f7f9fc;
+    --bad:#e04a3a;
+    --shadow:0 1px 0 rgba(255,255,255,.9) inset, 0 6px 14px -8px rgba(20,35,70,.45);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#141922; --grid:rgba(150,175,215,.07);
+      --ink:#e8edf6; --muted:#8b98ad;
+      --paper:#262e3b; --paper2:#1e2531; --edge:#3a4557; --crease:#4a5668;
+      --on1:#4d86ff; --on2:#2f5fdd; --onedge:#6d9bff;
+      --panel:#1b212c; --bad:#ff6a58;
+      --shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 8px 18px -10px rgba(0,0,0,.8);
+    }
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; color:var(--ink);
+    font:14px/1.45 ui-sans-serif,system-ui,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:
+      linear-gradient(var(--grid) 1px, transparent 1px) 0 0/22px 22px,
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0/22px 22px,
+      var(--bg);
+    min-height:100vh;
+    display:flex; flex-direction:column; align-items:center;
+    padding:22px 16px 40px;
+  }
+
+  h1{
+    margin:0 0 2px; font-size:24px; letter-spacing:-.02em;
+    display:flex; align-items:center; gap:9px;
+  }
+  h1 .dot{width:11px;height:11px;border-radius:3px;background:linear-gradient(var(--on1),var(--on2))}
+  .tagline{margin:0 0 18px; color:var(--muted); font-size:13px; text-align:center}
+
+  .panel{
+    display:flex; flex-wrap:wrap; gap:8px 14px; align-items:flex-end; justify-content:center;
+    background:var(--panel); border:1px solid var(--edge); border-radius:12px;
+    padding:11px 14px; margin-bottom:18px; box-shadow:var(--shadow);
+  }
+  .field{display:flex; flex-direction:column; gap:4px}
+  .field label{font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--muted)}
+  select,input[type=text],button{
+    font:inherit; color:var(--ink); background:var(--paper);
+    border:1px solid var(--edge); border-radius:8px; padding:7px 9px;
+  }
+  select{cursor:pointer; min-width:140px}
+  #dec{width:150px; font-variant-numeric:tabular-nums}
+  button{cursor:pointer; font-weight:600}
+  button:hover{border-color:var(--on1); color:var(--on1)}
+  button:active{transform:translateY(1px)}
+  .btns{display:flex; gap:7px}
+
+  /* ---------- the flippy do ---------- */
+  .strip{
+    width:100%; overflow-x:auto; overflow-y:visible;
+    padding:8px 2px 18px; -webkit-overflow-scrolling:touch;
+  }
+  .rail{display:flex; gap:9px; margin:0 auto; width:max-content}
+
+  .col{--w:clamp(58px,9.2vw,80px); width:var(--w); flex:0 0 auto; display:flex; flex-direction:column}
+
+  .head{ flex:1 0 auto; display:flex; flex-direction:column; justify-content:center;
+    background:linear-gradient(var(--paper),var(--paper2));
+    border:1px solid var(--edge); border-bottom:none; border-radius:11px 11px 0 0;
+    padding:7px 3px 6px; text-align:center; box-shadow:var(--shadow);
+  }
+  .exp{font-size:14px; font-weight:700; color:var(--muted); line-height:1.1}
+  .exp sup{font-size:.66em; font-weight:700}
+  .pv{ overflow-wrap:anywhere;
+    margin-top:2px; font-size:12px; font-weight:800; line-height:1.2;
+    font-variant-numeric:tabular-nums; letter-spacing:-.01em;
+  }
+  .pv.long{font-size:10px}
+  .pv.xlong{font-size:8.5px; letter-spacing:-.4px}
+
+  .flap{position:relative; height:96px; flex:0 0 auto; perspective:900px}
+  .flap .face{
+    position:absolute; inset:0; border-radius:0 0 11px 11px;
+    border:1px solid var(--edge); border-top:1px dashed var(--crease);
+    background:linear-gradient(var(--paper),var(--paper2));
+    display:flex; align-items:center; justify-content:center;
+    transform-origin:center center; backface-visibility:hidden; will-change:transform;
+    box-shadow:var(--shadow); overflow:hidden;
+  }
+  .flap .dg{
+    font:800 36px/1 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-variant-numeric:tabular-nums; color:var(--muted);
+  }
+  .flap .sub{
+    position:absolute; right:6px; bottom:4px; font-size:10px; font-weight:700;
+    color:var(--muted); opacity:.75;
+  }
+  .flap.on .face{
+    background:linear-gradient(var(--on1),var(--on2));
+    border-color:var(--onedge); border-top-color:rgba(255,255,255,.45);
+  }
+  .flap.on .dg,.flap.on .sub{color:#fff}
+  .flap.on .sub{opacity:.85}
+
+  .shade{position:absolute; inset:0; background:#000; opacity:0; pointer-events:none}
+  .face.flip{animation:flip .27s ease-in-out both}
+  .face.flip .shade{animation:shade .27s ease-in-out both; animation-delay:inherit}
+  @keyframes flip{
+    0%   {transform:rotateX(0deg)}
+    49.9%{transform:rotateX(-88deg)}
+    50%  {transform:rotateX(88deg)}
+    100% {transform:rotateX(0deg)}
+  }
+  @keyframes shade{0%,100%{opacity:0} 50%{opacity:.5}}
+
+  .hit{
+    position:absolute; inset:0; width:100%; height:100%;
+    opacity:0; border:0; padding:0; background:transparent;
+    font-size:16px; cursor:pointer; border-radius:0 0 11px 11px;
+  }
+  .flap:focus-within .face{outline:2.5px solid var(--on1); outline-offset:2px}
+  .col.bad .face{animation:shake .3s}
+  .col.bad .dg{color:var(--bad)}
+  @keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+
+  @media (prefers-reduced-motion: reduce){
+    .face.flip,.face.flip .shade,.col.bad .face{animation-duration:.01ms}
+  }
+
+  /* ---------- readout ---------- */
+  .readout{
+    width:100%; max-width:760px; background:var(--panel); border:1px solid var(--edge);
+    border-radius:12px; padding:14px 16px; box-shadow:var(--shadow); text-align:center;
+  }
+  .totlabel{font-size:11px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--muted)}
+  .total{
+    font:800 34px/1.1 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-variant-numeric:tabular-nums; letter-spacing:-.02em; word-break:break-all;
+  }
+  .digitstring{
+    margin-top:6px; font:700 15px/1.3 ui-monospace,Menlo,Consolas,monospace;
+    letter-spacing:.12em; word-break:break-all;
+  }
+  .digitstring span{color:var(--muted); font-weight:600; letter-spacing:0}
+  .instr{
+    margin-top:10px; padding-top:10px; border-top:1px dashed var(--crease);
+    font:13px/1.8 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    color:var(--muted); word-break:break-word;
+  }
+  .instr b{color:var(--ink)}
+  .note{min-height:17px; margin:8px 0 0; font-size:12px; color:var(--bad); font-weight:600}
+  .hint{max-width:660px; margin:16px auto 0; color:var(--muted); font-size:12.5px; text-align:center; line-height:1.9}
+  kbd{
+    font:600 11px/1 ui-monospace,Menlo,Consolas,monospace; background:var(--paper);
+    border:1px solid var(--edge); border-bottom-width:2px; border-radius:5px; padding:3px 5px; color:var(--ink);
+  }
+</style>
+</head>
+<body>
+
+<h1><span class="dot"></span>Flippy Do</h1>
+<p class="tagline">Flip the flaps, read the number &mdash; in any base up to 32.</p>
+
+<div class="panel">
+  <div class="field">
+    <label for="base">Base</label>
+    <select id="base"></select>
+  </div>
+  <div class="field">
+    <label for="places">Flaps</label>
+    <select id="places"></select>
+  </div>
+  <div class="field">
+    <label for="dec">Show this number</label>
+    <input id="dec" type="text" inputmode="numeric" autocomplete="off" placeholder="e.g. 137">
+  </div>
+  <div class="btns">
+    <button id="set">Set</button>
+    <button id="rand">Random</button>
+    <button id="clear">Clear</button>
+  </div>
+</div>
+
+<div class="strip"><div class="rail" id="rail"></div></div>
+
+<div class="readout">
+  <div class="totlabel">Decimal value</div>
+  <div class="total" id="total">0</div>
+  <div class="digitstring" id="dstring"></div>
+  <div class="instr" id="instr"></div>
+  <p class="note" id="note"></p>
+</div>
+
+<p class="hint">
+  <b>Click a flap</b> to turn it off &mdash; in base 2 it just toggles 0 &harr; 1.
+  <b>Type</b> a digit to set one: <kbd>0</kbd>&ndash;<kbd>9</kbd>, then <kbd>A</kbd>&ndash;<kbd>V</kbd> for 10&ndash;31
+  (above base 10 you can also type <kbd>2</kbd><kbd>5</kbd> to mean 25).
+  <kbd>&uarr;</kbd><kbd>&darr;</kbd> nudge &middot; <kbd>&larr;</kbd><kbd>&rarr;</kbd> move &middot; <kbd>Backspace</kbd> clears a flap.
+</p>
+
+<script>
+(function(){
+  "use strict";
+
+  var DIGITS = "0123456789ABCDEFGHIJKLMNOPQRSTUV";   // 32 digit glyphs: 0-9 then A-V
+  var HALF = 135;                                    // ms - half the flip, when the digit swaps
+  var NAMES = {2:"binary", 3:"ternary", 8:"octal", 10:"decimal", 12:"duodecimal",
+               16:"hex", 20:"vigesimal", 32:"duotrigesimal"};
+
+  var state = { base: 2, places: 8, digits: [] };
+  var cols = [], timers = [], buf = { i:-1, val:0, t:0 };
+
+  var rail    = document.getElementById("rail");
+  var baseSel = document.getElementById("base");
+  var plcSel  = document.getElementById("places");
+  var decIn   = document.getElementById("dec");
+  var noteEl  = document.getElementById("note");
+  var noteTimer;
+
+  /* ---------- math (BigInt, so 32^12 stays exact) ---------- */
+  function placeValue(i){ return BigInt(state.base) ** BigInt(state.places - 1 - i); }
+  function maxValue(){ return BigInt(state.base) ** BigInt(state.places) - 1n; }
+  function total(){
+    var t = 0n;
+    for (var i = 0; i < state.places; i++) t += BigInt(state.digits[i]) * placeValue(i);
+    return t;
+  }
+  function fmt(v){ return v.toLocaleString("en-US"); }
+
+  /* ---------- build the strip ---------- */
+  function buildStrip(){
+    rail.innerHTML = "";
+    for (var i = 0; i < state.places; i++){
+      var col = document.createElement("div");
+      col.className = "col";
+      col.innerHTML =
+        '<div class="head">' +
+          '<div class="exp"><span class="b"></span><sup class="e"></sup></div>' +
+          '<div class="pv"></div>' +
+        '</div>' +
+        '<div class="flap">' +
+          '<div class="face"><span class="dg">0</span><span class="sub"></span><span class="shade"></span></div>' +
+          '<input class="hit" type="text" autocomplete="off" autocorrect="off" ' +
+                 'autocapitalize="characters" spellcheck="false">' +
+        '</div>';
+      rail.appendChild(col);
+    }
+    cols = Array.prototype.slice.call(rail.children);
+    timers = new Array(state.places);
+
+    cols.forEach(function(col, i){
+      var face = col.querySelector(".face");
+      var hit  = col.querySelector(".hit");
+      face.addEventListener("animationend", function(e){
+        if (e.target === face){ face.classList.remove("flip"); face.style.animationDelay = ""; }
+      });
+      hit.addEventListener("click", function(){ resetBuf(); onClick(i); });
+      hit.addEventListener("keydown", function(e){ onKey(i, e); });
+      hit.addEventListener("beforeinput", function(e){      // touch keyboards / IME
+        e.preventDefault();
+        if (e.inputType === "deleteContentBackward"){ resetBuf(); setDigit(i, 0); return; }
+        if (e.data) typeStr(i, e.data);
+      });
+      hit.addEventListener("blur", resetBuf);
+    });
+
+    renderHeads();
+    renderAll(false);
+  }
+
+  function renderHeads(){
+    for (var i = 0; i < state.places; i++){
+      var col = cols[i];
+      col.querySelector(".b").textContent = state.base;
+      col.querySelector(".e").textContent = state.places - 1 - i;
+      var pv = col.querySelector(".pv"), s = fmt(placeValue(i));
+      pv.textContent = s;
+      pv.className = "pv" + (s.length > 13 ? " xlong" : s.length > 9 ? " long" : "");
+    }
+  }
+
+  /* ---------- painting one flap ---------- */
+  function paint(i, animate, delay){
+    var col  = cols[i];
+    var face = col.querySelector(".face");
+    var flap = col.querySelector(".flap");
+    var v    = state.digits[i];
+
+    function write(){
+      col.querySelector(".dg").textContent = DIGITS[v];
+      col.querySelector(".sub").textContent = state.base > 10 ? String(v) : "";
+      flap.classList.toggle("on", v !== 0);
+      col.querySelector(".hit").setAttribute("aria-label",
+        "Place worth " + fmt(placeValue(i)) + ", digit " + DIGITS[v]);
+    }
+
+    clearTimeout(timers[i]);
+    if (!animate){ write(); return; }
+
+    face.classList.remove("flip");
+    void face.offsetWidth;                          // restart the keyframes
+    face.style.animationDelay = delay ? delay + "ms" : "";
+    face.classList.add("flip");
+    timers[i] = setTimeout(write, (delay || 0) + HALF);   // swap while edge-on
+  }
+
+  function renderAll(animate){
+    for (var i = 0; i < state.places; i++) paint(i, !!animate, animate ? i * 32 : 0);
+    renderReadout();
+  }
+
+  /* ---------- readout ---------- */
+  function renderReadout(){
+    var t = total(), str = "", terms = [];
+    for (var i = 0; i < state.places; i++){
+      var d = state.digits[i];
+      str += DIGITS[d];
+      if (d !== 0) terms.push("<b>" + DIGITS[d] + "</b> × " + fmt(placeValue(i)));
+    }
+    document.getElementById("total").textContent = fmt(t);
+    document.getElementById("dstring").innerHTML = str + ' <span>(base ' + state.base + ')</span>';
+    document.getElementById("instr").innerHTML = terms.length
+      ? terms.join("  +  ") + "  =  <b>" + fmt(t) + "</b>"
+      : "every flap is off — the number is <b>0</b>";
+  }
+
+  function note(msg){
+    noteEl.textContent = msg || "";
+    clearTimeout(noteTimer);
+    if (msg) noteTimer = setTimeout(function(){ noteEl.textContent = ""; }, 3000);
+  }
+
+  /* ---------- changing digits ---------- */
+  function setDigit(i, v, animate, delay){
+    v = Math.max(0, Math.min(state.base - 1, v | 0));
+    var changed = state.digits[i] !== v;
+    state.digits[i] = v;
+    paint(i, changed && animate !== false, delay || 0);
+    renderReadout();
+  }
+
+  function applyDigits(arr){
+    var moved = 0;
+    for (var i = 0; i < state.places; i++){
+      var v = Math.max(0, Math.min(state.base - 1, arr[i] | 0));
+      var changed = state.digits[i] !== v;
+      state.digits[i] = v;
+      paint(i, changed, changed ? (moved++) * 34 : 0);    // little left-to-right cascade
+    }
+    renderReadout();
+  }
+
+  function onClick(i){
+    if (state.base === 2) setDigit(i, state.digits[i] ? 0 : 1);
+    else setDigit(i, 0);                                   // a click turns the flap off
+  }
+
+  function bump(i, d){
+    resetBuf();
+    setDigit(i, (state.digits[i] + d + state.base) % state.base);
+  }
+
+  function focusCol(i){
+    if (i < 0 || i >= state.places) return;
+    cols[i].querySelector(".hit").focus();
+  }
+
+  function bad(i){
+    var col = cols[i];
+    col.classList.remove("bad"); void col.offsetWidth; col.classList.add("bad");
+    setTimeout(function(){ col.classList.remove("bad"); }, 340);
+    note("Base " + state.base + " only has the digits 0–" + DIGITS[state.base - 1] + ".");
+  }
+
+  function resetBuf(){ buf = { i:-1, val:0, t:0 }; }
+
+  function typeStr(i, s){ for (var k = 0; k < s.length; k++) handleChar(i, s[k]); }
+
+  function handleChar(i, ch){
+    var d = DIGITS.indexOf(ch.toUpperCase());
+    if (d < 0) return;                                     // not a digit glyph at all
+    var now = Date.now();
+
+    if (d <= 9 && state.base > 10){
+      // above base 10, let "2" then "5" build up to 25 while it still fits
+      var cand = (buf.i === i && now - buf.t < 1500) ? buf.val * 10 + d : d;
+      if (cand >= state.base) cand = d;
+      buf = { i:i, val:cand, t:now };
+      setDigit(i, cand);
+      return;
+    }
+    resetBuf();
+    if (d >= state.base){ bad(i); return; }
+    setDigit(i, d);
+  }
+
+  function onKey(i, e){
+    var k = e.key;
+    if (k === "ArrowLeft"){ e.preventDefault(); focusCol(i - 1); return; }
+    if (k === "ArrowRight"){ e.preventDefault(); focusCol(i + 1); return; }
+    if (k === "ArrowUp"){ e.preventDefault(); bump(i, 1); return; }
+    if (k === "ArrowDown"){ e.preventDefault(); bump(i, -1); return; }
+    if (k === "Backspace" || k === "Delete"){ e.preventDefault(); resetBuf(); setDigit(i, 0); return; }
+    if (k === " " || k === "Enter"){ e.preventDefault(); resetBuf(); onClick(i); return; }
+    if (k && k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey){ e.preventDefault(); handleChar(i, k); }
+  }
+
+  /* ---------- the number box ---------- */
+  function setFromDecimal(){
+    var s = decIn.value.trim().replace(/[,\s_]/g, "");
+    if (!s) return;
+    if (!/^\d+$/.test(s)){ note("Type a whole decimal number."); return; }
+    var v = BigInt(s), max = maxValue(), over = v > max;
+    if (over) v = max;
+    var out = new Array(state.places), B = BigInt(state.base);
+    for (var i = state.places - 1; i >= 0; i--){ out[i] = Number(v % B); v = v / B; }
+    applyDigits(out);
+    note(over ? state.places + " flaps in base " + state.base + " only reach " + fmt(max) + "." : "");
+  }
+
+  /* ---------- controls ---------- */
+  function fillSelects(){
+    var o = "", b, p;
+    for (b = 2; b <= 32; b++)
+      o += '<option value="' + b + '">Base ' + b + (NAMES[b] ? " · " + NAMES[b] : "") + "</option>";
+    baseSel.innerHTML = o;
+    baseSel.value = state.base;
+
+    o = "";
+    for (p = 2; p <= 12; p++) o += '<option value="' + p + '">' + p + " flaps</option>";
+    plcSel.innerHTML = o;
+    plcSel.value = state.places;
+  }
+
+  baseSel.addEventListener("change", function(){
+    var old = state.base, clipped = false;
+    state.base = +baseSel.value;
+    renderHeads();
+    for (var i = 0; i < state.places; i++){
+      if (state.digits[i] > state.base - 1){ state.digits[i] = state.base - 1; clipped = true; }
+    }
+    renderAll(true);
+    note(clipped ? "Digits too big for base " + state.base + " were trimmed (came from base " + old + ")." : "");
+  });
+
+  plcSel.addEventListener("change", function(){
+    var old = state.digits.slice(), n = +plcSel.value;
+    state.places = n;
+    state.digits = new Array(n).fill(0);
+    for (var k = 0; k < Math.min(n, old.length); k++)      // keep the low-order digits
+      state.digits[n - 1 - k] = old[old.length - 1 - k];
+    buildStrip();
+  });
+
+  document.getElementById("set").addEventListener("click", setFromDecimal);
+  decIn.addEventListener("keydown", function(e){
+    if (e.key === "Enter"){ e.preventDefault(); setFromDecimal(); }
+  });
+  document.getElementById("clear").addEventListener("click", function(){
+    decIn.value = ""; note(""); applyDigits(new Array(state.places).fill(0));
+  });
+  document.getElementById("rand").addEventListener("click", function(){
+    var a = [];
+    for (var i = 0; i < state.places; i++) a.push(Math.floor(Math.random() * state.base));
+    note(""); applyDigits(a);
+  });
+
+  /* ---------- go ---------- */
+  state.digits = new Array(state.places).fill(0);
+  fillSelects();
+  buildStrip();
+})();
+</script>
+</body>
+</html>
