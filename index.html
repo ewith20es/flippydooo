@@ -177,12 +177,12 @@
 <body>
 
 <h1><span class="dot"></span>Flippy Do</h1>
-<p class="tagline">Flip the flaps, read the number &mdash; in any base up to 100.</p>
+<p class="tagline">Flip the flaps, read the number &mdash; in any base up to 36.</p>
 
 <div class="panel">
   <div class="field">
     <label for="base">Base <span class="bname" id="baseName"></span></label>
-    <input id="base" type="number" min="2" max="100" step="1" value="2" inputmode="numeric" autocomplete="off">
+    <input id="base" type="number" min="2" max="36" step="1" value="2" inputmode="numeric" autocomplete="off">
   </div>
   <div class="field">
     <label for="places">Flaps</label>
@@ -212,7 +212,7 @@
 <p class="hint">
   <b>Click a flap</b> to count it up like a scoreboard &mdash; after the top digit it rolls back to 0.
   <b>Type</b> a digit to set one: <kbd>0</kbd>&ndash;<kbd>9</kbd>, then <kbd>A</kbd>&ndash;<kbd>Z</kbd> for 10&ndash;35
-  (above base 10 you can also type <kbd>4</kbd><kbd>7</kbd> to mean 47; past base 36 flaps show plain numbers).
+  (above base 10 you can also type <kbd>2</kbd><kbd>5</kbd> to mean 25).
   <kbd>&uarr;</kbd><kbd>&darr;</kbd> nudge &middot; <kbd>&larr;</kbd><kbd>&rarr;</kbd> move &middot; <kbd>Backspace</kbd> clears a flap.
 </p>
 
@@ -221,14 +221,10 @@
   "use strict";
 
   var DIGITS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";   // 36 digit glyphs: 0-9 then A-Z
-  var MAX_BASE = 100;
+  var MAX_BASE = DIGITS.length;                      // 36: every digit is one character
   var HALF = 135;                                    // ms - half the flip, when the digit swaps
   var NAMES = {2:"binary", 3:"ternary", 8:"octal", 10:"decimal", 12:"duodecimal",
-               16:"hex", 20:"vigesimal", 32:"duotrigesimal", 36:"hexatrigesimal",
-               60:"sexagesimal", 100:"centesimal"};
-
-  // past base 36 there are no standard single glyphs, so a digit is shown as its value
-  function glyph(v){ return state.base <= DIGITS.length ? DIGITS[v] : String(v); }
+               16:"hex", 20:"vigesimal", 32:"duotrigesimal", 36:"hexatrigesimal"};
 
   var state = { base: 2, places: 8, digits: [] };
   var cols = [], timers = [], buf = { i:-1, val:0, t:0 };
@@ -311,12 +307,11 @@
     var v    = state.digits[i];
 
     function write(){
-      col.querySelector(".dg").textContent = glyph(v);
-      col.querySelector(".sub").textContent =
-        state.base > 10 && state.base <= DIGITS.length ? String(v) : "";
+      col.querySelector(".dg").textContent = DIGITS[v];
+      col.querySelector(".sub").textContent = state.base > 10 ? String(v) : "";
       flap.classList.toggle("on", v !== 0);
       col.querySelector(".hit").setAttribute("aria-label",
-        "Place worth " + fmt(placeValue(i)) + ", digit " + glyph(v));
+        "Place worth " + fmt(placeValue(i)) + ", digit " + DIGITS[v]);
     }
 
     clearTimeout(timers[i]);
@@ -336,14 +331,12 @@
 
   /* ---------- readout ---------- */
   function renderReadout(){
-    var t = total(), parts = [], terms = [];
-    var wide = state.base > DIGITS.length, pad = String(state.base - 1).length;
+    var t = total(), str = "", terms = [];
     for (var i = 0; i < state.places; i++){
       var d = state.digits[i];
-      parts.push(wide ? String(d).padStart(pad, "0") : DIGITS[d]);
-      if (d !== 0) terms.push("<b>" + glyph(d) + "</b> × " + fmt(placeValue(i)));
+      str += DIGITS[d];
+      if (d !== 0) terms.push("<b>" + DIGITS[d] + "</b> × " + fmt(placeValue(i)));
     }
-    var str = parts.join(wide ? ":" : "");                 // e.g. 01:47:00 in base 100
     document.getElementById("total").textContent = fmt(t);
     document.getElementById("dstring").innerHTML = str + ' <span>(base ' + state.base + ')</span>';
     document.getElementById("instr").innerHTML = terms.length
@@ -393,7 +386,7 @@
     var col = cols[i];
     col.classList.remove("bad"); void col.offsetWidth; col.classList.add("bad");
     setTimeout(function(){ col.classList.remove("bad"); }, 340);
-    note("Base " + state.base + " only has the digits 0–" + glyph(state.base - 1) + ".");
+    note("Base " + state.base + " only has the digits 0–" + DIGITS[state.base - 1] + ".");
   }
 
   function resetBuf(){ buf = { i:-1, val:0, t:0 }; }
